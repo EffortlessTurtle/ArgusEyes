@@ -1,4 +1,4 @@
-#       <ArgusMachine, webscraper for news stories, v0.11,Working,EffortlessTurtle>
+#       <ArgusMachine, webscraper for news stories, v0.11,GitHub,EffortlessTurtle>
 ########################################################################
 #       <TODO>
 # -finish other methods to scrape other sites
@@ -58,106 +58,6 @@ class Quill: #For the write to file section of a FXN
 
 #Globals
 
-def wsj_us(fo):        #Appears that they don't want to be scraped. This will take time. Skipping in first build
-    """this pulls the WSJ - US news
-    ++++
-    NOTE:
-    -this one has very long class names. and is the template of many of its contemporaries.
-    """
-   
-    
-    #Loading bar
-    widgets = ['Fetched WSJ - US: ', progressbar.AnimatedMarker()]
-    bar = progressbar.ProgressBar(widgets=widgets).start()
-    i =0
-    for i in range(50):
-        time.sleep(0.1)
-        bar.update(i)
-    #Get url, parse into text
-    url = 'https://www.wsj.com/news/us?mod=nav_top_section'
-    response = requests.get(url)
-    site_nam = 'WSJ - US'
-    text = response.text
-    data = BeautifulSoup(text, 'html.parser')
-    #Write in title
-    Quill.title_write(site_nam,fo)
-    
-    bold_container = "WSJTheme--story--XB4V2mLz WSJTheme--articleType-padding-medium---ioo_rP- WSJTheme--lead-story--3Ji8zGZw WSJTheme--media-margin-bottom--1bIRFuDR WSJTheme--summary-padding-medium--2SJH7fOL WSJTheme--margin-bottom-xlarge--3ilpUEcb styles--margin-bottom-xlarge--3otsIrdd "
-    bold_title = "WSJTheme--headlineText--He1ANr9C "
-    bold_more_info = "WSJTheme--summaryText--2LRaCWgJ "
-    p_bold = data
-    p_bold_title = p_bold.find(class_=bold_title).text.strip() if p_bold.find(class_=bold_title) else ''
-    p_bold_more_info = p_bold.find(class_=bold_more_info).text.strip() if p_bold.find(class_=bold_more_info) else ''
-    
-    #Write Big headline to file with excerpt and Now()
-    Quill.write(p_bold_title,p_bold_more_info,"", fo)
-    
-    #Class name stand-ins (CSI)
-    container_CSI = "style--column--1p190TxH style--column-top--3Nm75EtS style--column-4--2Ng-GQLy "  #findall() makes a list, just use main container name
-    title_CSI = "WSJTheme--headlineText--He1ANr9C "
-    excerpt_CSI = "WSJTheme--summaryText--2LRaCWgJ"
-    time_CSI = f'pulled: {dt.date.today()}'
-    
-    
-    #Class main
-    tit_list = data.find(class_='main').find(class_=title_CSI).text.strip()
-    print(tit_list)
-    print(str(type(tit_list)))
-    for tit_list in data.find(class_='main'):
-        Quill.write(title_CSI,excerpt_CSI,time_CSI,fo)
-        
-     
-    # For loop through each container for title, time and who reported
-    for tag in data.find_all(class_=container_CSI): #findall() makes a list, just use main container name
-
-        # get title of article
-        title = tag.find(class_=title_CSI).text.strip(
-        ) if tag.find(class_=title_CSI) else 'No Headline Found!'
-        
-        # Get the short news excerpt
-        more_info = tag.find(class_=excerpt_CSI).text.strip(
-        ) if tag.find(
-            class_=excerpt_CSI) else ''
-        
-        # Get Date article was written
-        try:
-            date = tag.find(class_=time_CSI).datetime.text.strip()
-        except AttributeError:
-            date = f'pulled: {dt.date.today()}'
-            
-        #write to file the date, title and excerpt
-        Quill.write(title,more_info,date,fo)
-        
-       
-        
-    container_CSI = "WSJTheme--articleType--34Gt-vdG "  #findall() makes a list, just use main container name
-    title_CSI = "WSJTheme--headlineText--He1ANr9C "
-    excerpt_CSI = "WSJTheme--summaryText--2LRaCWgJ"
-    time_CSI = ""    
-        
-    for tag in data.find_all(class_=container_CSI): #findall() makes a list, just use main container name
-
-        # get title of article
-        title = tag.find(class_=title_CSI).text.strip(
-        ) if tag.find(class_=title_CSI) else 'No Headline Found!'
-        
-        # Get the short news excerpt
-        more_info = tag.find(class_=excerpt_CSI).text.strip(
-        ) if tag.find(
-            class_=excerpt_CSI) else ''
-        
-        # Get Date article was written
-        try:
-            date = tag.find(class_=time_CSI).datetime.text.strip()
-        except AttributeError:
-            date = f'pulled: {dt.date.today()}'
-            
-        #write to file the date, title and excerpt
-        Quill.write(title,more_info,date,fo)
-        i+=1
-        bar.update(i)
-    print("\nWSJ - US: fetched")
-    i=0        
 
 #Must pass in 'fo' for the Quill class to work
 def epoch_US(fo):  # Pulls title, blurb and date written for Epoch US
