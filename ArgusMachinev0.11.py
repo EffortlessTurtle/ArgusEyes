@@ -1,4 +1,4 @@
-#       <ArgusMachine, webscraper for news stories, v0.10,Working,EffortlessTurtle>
+#       <ArgusMachine, webscraper for news stories, v0.11,Working,EffortlessTurtle>
 ########################################################################
 #       <TODO>
 # -finish other methods to scrape other sites
@@ -1038,7 +1038,7 @@ def main():
         os.mkdir(fo_news)
         fo = open(fo_file, "w")
         print(f'News at: {fo_news}')
-        #Pass in "fo" FXN or Quill.<function>() won't work
+    #Pass in "fo" FXN or Quill.<function>() won't work
     #active_FXN(fo)
     nyt_US(fo)
     print(f'News fetched and located at: {fo_news}')
