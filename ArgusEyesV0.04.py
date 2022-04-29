@@ -1,4 +1,4 @@
-#       <YArgusMachine, webscraper to pull news stories, v0.04Github>
+#       <ArgusEyes, webscraper to pull news stories, v0.04Github>
 #
 #       !!!SET global variable 'fo' to use this scraper!!!
 #
