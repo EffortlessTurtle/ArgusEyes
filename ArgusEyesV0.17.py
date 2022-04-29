@@ -1,7 +1,7 @@
 #       <ArgusEyes,webscraper for news stories,v0.17,Github,EffortlessTurtle>
 ########################################################################
 #       <TODO>
-# -finish other methods to scrape other sites
+# -finish other methods to scrape other sites (18/46 finished)
 # -print all to a txt doc for user review
 # -eventually to be hosted and then emails? result every 2 hours to a special account
 # -Eventually output to css
