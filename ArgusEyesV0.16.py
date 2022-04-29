@@ -1,4 +1,4 @@
-#       <ArgusEyes, webscraper for news stories, v0.16,Working,EffortlessTurtle>
+#       <ArgusEyes,webscraper for news stories,v0.16,Github,EffortlessTurtle>
 ########################################################################
 #       <TODO>
 # -finish other methods to scrape other sites
