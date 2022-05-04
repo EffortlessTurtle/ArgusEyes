@@ -6,7 +6,7 @@
 # -make different sections write to separate files at same time using multi-threading. (methodology under investigation)   
 # -Check path to ensure that it's always pointed at the Desktop (methodology under investigatio)
 # -eventually to be hosted and then emails? result every 2 hours to a special account
-# -Eventually output to css
+# -Eventually output to CSV file
 #
 #########################################################################
 
