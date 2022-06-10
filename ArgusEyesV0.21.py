@@ -1,0 +1,1331 @@
+#       <ArgusEyes,webscraper for news stories,v0.21,Github,EffortlessTurtle>
+########################################################################
+#       <TODO>
+# -finish other methods to scrape other sites
+# -Figure out multithreading (under investigation)
+# -make different sections write to separate files at same time using multi-threading. (methodology under investigation)   
+# -Check path to ensure that it's always pointed at the Desktop (methodology under investigatio)
+# -eventually to be hosted and then emails? result every 2 hours to a special account
+# -Eventually output to css
+#
+#########################################################################
+
+
+# imports
+
+import requests
+import progressbar
+from bs4 import BeautifulSoup
+import datetime as dt
+from dateutil import parser
+from pathlib import Path
+import os
+import time
+import feedparser as fp
+
+# Classes
+
+class Quill: #For the write to file section of a FXN
+    """ Preps and makes both CSV and human readable file. Custom Class for ArgusEyes. """
+    
+    def __init__(self, tit_CSI, exer_CSI, dat_CSI, file_fo):
+        """Do I really need to put anything here?"""
+        self.title = tit_CSI
+        self.ex = exer_CSI
+        self.date = dat_CSI
+        self.fo = file_fo    
+    
+    def write(title, ex, date,site_nam, fo): #Writes this to the file from main()
+        """ Writes Human Readable file"""
+        fo.write(str(date) + "\n\n")
+        fo.write(title + "\n")
+        fo.write("\n")
+        fo.write(ex)
+        fo.write('\nfrom: '+ site_nam + "\n" + 140 * '-'+"\n")
+        
+    def title_write(name,fo): #Writes the of the title of site with different format to file.
+        """ Writes Human Readable title of source """ 
+        name = str(name) + '\n\n'
+        fo.write(15 * ' ' + name + '-- Date Pulled: ' + str(dt.date.today()) + "\n")
+        fo.write(140 * "^" + '\n\n')
+    
+    def csv_file_prep(fo): #Preps files as CSV file
+        """ Preps first line of file for CSV """
+        fo.write('DATE' + "," + "HEADLINE" + "," + "EXCERPT" + "," + "Source" + "\n")
+    
+    def csv_tit_write(name, fo): #Writes title line of the CSV
+        """Writes title line of the CSV """
+        date = dt.date.today()
+        fo.write('\nPulled:' + str(date) + "," + name + ", " + "\n")
+    
+    def csv_write(title, excerpt, date,fo): #Writes the entries to CSV
+        """ Writes the entries to CSV """
+        fo.write(str(date) + "," + title + "," + excerpt)
+        
+#Globals
+
+#Must pass in 'fo' for the Quill class to work
+def epoch_US(fo):  # Pulls title, blurb and date written for Epoch - US
+    """ Pulls Epoch - US News"""
+    #Get text from website
+    url = 'https://www.theepochtimes.com/c-us'
+    site_nam = '__The Epoch Times - US News__'
+    response = requests.get(url)
+    text = response.text
+    data = BeautifulSoup(text, 'html.parser')
+    
+    #Write site name to fo
+    Quill.title_write(site_nam,fo)
+    
+    #Loading bar
+    widgets = ['Fetching Epoch - US: ', progressbar.AnimatedMarker()]
+    bar = progressbar.ProgressBar(widgets=widgets).start()
+    i = 0
+    for i in range(50):
+        time.sleep(0.1)
+        bar.update(i)
+    
+    #Begin collecting news stories
+    for x in range(2, 3):
+        response = requests.get(url)  # -MARK, must remain to keep requesting correct site
+        text = response.text  #-MARK, must remain to keep requesting correct site
+        data = BeautifulSoup(text, 'html.parser')  # -MARK, must remain to keep requesting correct site
+        
+        # For loop through each container for title, time and who reported
+        for tag in data.find_all(class_="article_info text"):
+            
+            # get title of article
+            title = tag.find(class_='title').text.strip(
+            ) if tag.find(class_='title') else ''
+            
+            # Get the short news excerpt
+            more_info = tag.find(class_='excerpt more_info').text.strip(
+            ) if tag.find(
+                class_='excerpt more_info') else 'Epoch - US'
+            
+            # Get Date article was written
+            date = tag.find(class_='time').text.strip(
+            ) if tag.find(class_='time') else ''
+            
+            #Write to file the date, title and blurb
+            Quill.write(title,more_info,date,site_nam,fo)
+            #update loading bar
+            bar.update(1)
+        #Readies the url to request next page    
+        url = f"https://www.theepochtimes.com/c-us/" + str(x)
+    #Let user know it's finished with this section    
+    print("\n"+'Epoch - US: fetched')
+        
+def epoch_latest(fo):  # Pulls title, blurb and date written for Epoch - latest
+    """ Pulls Epoch - Latest """
+    
+    url = 'https://www.theepochtimes.com/latest/'
+    response = requests.get(url)
+    text = response.text
+    data = BeautifulSoup(text, 'html.parser')
+    
+    site_nam = 'Epoch - Latest'
+    #Write site name to 'fo'
+    Quill.title_write(site_nam,fo)
+    
+    #loading bar
+    widgets = ['Fetching Epoch - Latest: ', progressbar.AnimatedMarker()]
+    bar = progressbar.ProgressBar(widgets=widgets).start()
+    i = 0
+    for i in range(50):
+        time.sleep(0.1)
+        bar.update(i)
+    
+  
+    #Gets first 3 pages
+    for x in range(2, 3):
+        response = requests.get(url)  # -MARK NOTE: marked must stay here, otherwise you never request the next page's content from website
+        text = response.text
+        data = BeautifulSoup(text, 'html.parser')  # -MARK
+        
+        # For loop through each container for title, time and who reported
+        for tag in data.find_all(class_="article_info text"):
+
+            # get title of article
+            title = tag.find(class_='title').text.strip(
+            ) if tag.find(class_='title') else ''
+            
+            # Get the short news excerpt
+            more_info = tag.find(class_='excerpt more_info').text.strip(
+            ) if tag.find(
+                class_='excerpt more_info') else 'Epoch - Latest'
+            
+            # Get Date article was written
+            date = tag.find(class_='time').text.strip(
+            ) if tag.find(class_='time') else 'No date available'
+
+            date2 = parser.parse(date)
+
+            if date2 != dt.date.today():  # counter to
+                Quill.write(title,more_info,date,site_nam,fo)
+            else:
+                Quill.write(title,more_info,date,site_nam,fo)
+        url = f"https://www.theepochtimes.com/latest/" + str(x)
+        
+    print(("\n"+'Epoch - Latest: fetched'))
+    
+def epoch_USPol(fo):  # Pulls title, blurb and date written for Epoch - Politics
+    """ Pulls Epoch - US Polititcs """
+    
+    url = 'https://www.theepochtimes.com/c-us-politics'
+    response = requests.get(url)
+    text = response.text
+    data = BeautifulSoup(text, 'html.parser')
+    
+    site_nam = "Epoch Times - US Politics"
+    
+    #Write site name to file 'fo'
+    Quill.title_write(site_nam,fo)
+    
+    #loading bar
+    widgets = ['Fetching Epoch - US Politics: ', progressbar.AnimatedMarker()]
+    bar = progressbar.ProgressBar(widgets=widgets).start()
+    i =0
+    for i in range(50):
+        time.sleep(0.1)
+        bar.update(i)
+    
+    for tag in data.find_all(class_="post_list"):
+
+        # get title of article
+        title = tag.find(class_='title').text.strip(
+        ) if tag.find(class_='title') else ''
+        # Get the short news excerpt
+        more_info = tag.find(class_='excerpt more_info').text.strip(
+        ) if tag.find(
+            class_='excerpt more_info') else 'No Info Availabe'
+        # Get Date article was written
+        date = tag.find(class_='time').text.strip(
+        ) if tag.find(class_='time') else 'No date available'
+
+        date2 = parser.parse(date)
+        #print(date2)
+        #print(dt.date.today())
+        if date2 != dt.date.today():  # counter to
+            
+            Quill.write(title,more_info,date,site_nam,fo)
+            i += 1
+        else:
+
+            #print(' <- i, epoch_latest();else, inside epoch_latest')
+            Quill.write(title,more_info,date,fo)
+    print(("\n"+'Epoch - US Politics: fetched'))    
+    
+def epoch_World(fo):        #Pulls title, blurb and date Epoch - World
+    """ Pulls the Epoch world news """
+    #get request, parse into text
+    url = 'https://www.theepochtimes.com/c-world'
+    response = requests.get(url)
+    text = response.text
+    data = BeautifulSoup(text, 'html.parser')
+    
+    #Variables
+    site_nam ="Epoch - World"
+    container_class_stand_in = "post_list"
+    title_class_stand_in = "title"
+    excerpt_class_stand_in = "excerpt more_info"
+    time_class_stand_in = "time"
+    
+    #write site name to file
+    Quill.title_write(site_nam,fo)
+    
+    #loading bar    
+    widgets = ['Fetching Epoch - World: ', progressbar.AnimatedMarker()]
+    bar = progressbar.ProgressBar(widgets=widgets).start()
+    i =0
+    for i in range(50):
+        time.sleep(0.1)
+        bar.update(i)
+    
+    # For loop through each container for title, time and who reported
+    for tag in data.find_all(class_=container_class_stand_in):
+
+        # get title of article
+        title = tag.find(class_=title_class_stand_in).text.strip(
+        ) if tag.find(class_=title_class_stand_in) else ''
+        # Get the short news excerpt
+        more_info = tag.find(class_=excerpt_class_stand_in).text.strip(
+        ) if tag.find(
+            class_=excerpt_class_stand_in) else '\nEpoch - World'
+        # Get Date article was written
+        try:
+            date = tag.find(class_=time_class_stand_in).datetime.text.strip()
+        except AttributeError:
+            date = ''
+        #write to file section
+        Quill.write(title,more_info,date,site_nam,fo)
+        
+    print("\nEpoch - World: fetched")   
+
+def bbc_WOR(fo):        #Pulls title, blurb and date BBC world
+    """ Pulls the bbc world news """
+    #Define url, and parse this into text
+    url = 'https://www.bbc.com/news/world'
+    response = requests.get(url)
+    text = response.text
+    data = BeautifulSoup(text, 'html.parser')
+    
+    #Stand ins used for obvious reasons
+    site_name = "BBC - WORLD"
+    container_class_stand_in = "gs-c-promo-body gs-u-mt@xxs gs-u-mt@m gs-c-promo-body--flex gs-u-mt@xs gs-u-mt0@xs gs-u-mt@m gel-1/2@xs gel-1/1@s"
+    title_class_stand_in = "gs-c-promo-heading__title gel-pica-bold nw-o-link-split__text"
+    excerpt_class_stand_in = "gs-c-promo-summary gel-long-primer gs-u-mt nw-c-promo-summary gs-u-display-none gs-u-display-block@m"
+    time_class_stand_in = "gs-o-bullet__text date qa-status-date"
+    bold_container = "gs-c-promo-body gs-u-mt@xxs gs-u-mt@m gs-c-promo-body--primary gs-u-mt@xs gs-u-mt@s gs-u-mt@m gs-u-mt@xl gel-1/3@m gel-1/2@xl gel-1/1@xxl"
+    bold_title = "gs-c-promo-heading__title gel-paragon-bold gs-u-mt+ nw-o-link-split__text"
+    bold_more_info = "gs-c-promo-summary gel-long-primer gs-u-mt nw-c-promo-summary"
+    
+    #This must be here for the big bold headline BBC likes to put on their website
+    p_bold = data.find(class_=bold_container)
+    p_bold_title = p_bold.find(class_=bold_title).text.strip() if p_bold.find(class_=bold_title) else ''
+    p_bold_more_info = p_bold.find(class_=bold_more_info).text.strip() if p_bold.find(class_=bold_more_info) else ''
+    p_date = dt.datetime.today()
+    
+    #Write bold headline and excerpt to file along with today's date
+    Quill.write(p_bold_title,p_bold_more_info,p_date,site_name,fo)
+    
+    #Write site name to file
+    Quill.title_write(site_name,fo)
+   
+    #Loading bar
+    widgets = ['Fetching BBC - World: ', progressbar.AnimatedMarker()]
+    bar = progressbar.ProgressBar(widgets=widgets).start()
+    i =0
+    for i in range(50):
+        time.sleep(0.1)
+        bar.update(i)
+    
+    # For loop through each container for title, time and who reported
+    for tag in data.find_all(class_=container_class_stand_in):
+
+        # get title of article
+        title = tag.find(class_=title_class_stand_in).text.strip(
+        ) if tag.find(class_=title_class_stand_in) else ''
+        
+        # Get the short news excerpt
+        more_info = tag.find(class_=excerpt_class_stand_in).text.strip(
+        ) if tag.find(
+            class_=excerpt_class_stand_in) else 'BBC - World'
+        
+        # Get Date article was written
+        try:
+            date = tag.find(class_=time_class_stand_in).datetime.text.strip()
+        except AttributeError:
+            date = ''
+            
+        #write to file section
+        Quill.write(title,more_info,date,site_name,fo)
+    #Let user know That it's finished    
+    print("\nBBC - World: fetched")   
+    
+def bbc_UK(fo):        #Pulls title, blurb and date BBC UK
+    """ Pulls the bbc UK news """
+    url = 'https://www.bbc.com/news/uk'
+    response = requests.get(url)
+    text = response.text
+    data = BeautifulSoup(text, 'html.parser')
+    
+    #Stand-ins used for obvious reasons
+    container_class_stand_in = "gs-c-promo gs-t-News nw-c-promo gs-o-faux-block-link gs-u-pb gs-u-pb+@m nw-p-default gs-c-promo--inline gs-c-promo--stacked@m gs-c-promo--flex"
+    title_class_stand_in = "gs-c-promo-heading__title gel-pica-bold nw-o-link-split__text"
+    excerpt_class_stand_in = "gs-c-promo-summary gel-long-primer gs-u-mt nw-c-promo-summary gs-u-display-none gs-u-display-block@m"
+    time_class_stand_in = "gs-o-bullet__text date qa-status-date"
+    site_nam = 'BBC - UK'
+    bold_container = "gs-c-promo gs-t-News nw-c-promo gs-o-faux-block-link gs-u-pb gs-u-pb+@m nw-p-default gs-c-promo--inline@m gs-c-promo--stacked@xxl gs-c-promo--flex"
+    bold_title = "gs-c-promo-heading__title gel-paragon-bold gs-u-mt+ nw-o-link-split__text"
+    bold_more_info = "gs-c-promo-summary gel-long-primer gs-u-mt nw-c-promo-summary"
+    
+    #To pull the big headline from BBC - UK site
+    p_bold = data.find(class_=bold_container)
+    p_bold_title = p_bold.find(class_=bold_title).text.strip() if p_bold.find(class_=bold_title) else ''
+    p_bold_more_info = p_bold.find(class_=bold_more_info).text.strip() if p_bold.find(class_=bold_more_info) else ''
+    p_date = dt.datetime.today()
+    
+    #Write site name to document
+    Quill.title_write(site_nam,fo)
+    
+    #Write big headline from BBC - UK
+    Quill.write(p_bold_title,p_bold_more_info,p_date,site_nam,fo)    
+    #loading bar
+    widgets = ['Fetching BBC - UK: ', progressbar.AnimatedMarker()]
+    bar = progressbar.ProgressBar(widgets=widgets).start()
+    i =0
+    for i in range(50):
+        time.sleep(0.1)
+        bar.update(i)
+    
+    # For loop through each container for title, time and who reported
+    for tag in data.find_all(class_=container_class_stand_in):
+
+        # get title of article
+        title = tag.find(class_=title_class_stand_in).text.strip(
+        ) if tag.find(class_=title_class_stand_in) else ''
+        
+        # Get the short news excerpt
+        more_info = tag.find(class_=excerpt_class_stand_in).text.strip(
+        ) if tag.find(
+            class_=excerpt_class_stand_in) else 'BBC - UK'
+        
+        # Get Date article was written
+        try:
+            date = tag.find(class_=time_class_stand_in).datetime.text()
+        except AttributeError:
+            date = ''
+        #write to file
+        Quill.write(title,more_info,date,site_nam,fo)
+    print("\nBBC - UK: fetched")   
+
+def alja_us_can(fo):        #Pulls title, blurb and date Al Jazeera US & Canada
+    """ Pulls the Al Jazeera US and CAN news"""
+
+    #Get url, parse into text
+    url = 'https://www.aljazeera.com/us-canada/'
+    response = requests.get(url)
+    text = response.text
+    data = BeautifulSoup(text, 'html.parser')
+    
+    #Class name stand-ins (CSI)
+    container_CSI = "gc__content"  #findall() makes a list, just use main container name
+    title_CSI = "gc__title"
+    excerpt_CSI = "gc__excerpt"
+    time_CSI = "screen-reader-text"
+    site_nam = 'Al Jazeera - US & Canada'
+    
+    #Write in title
+    Quill.title_write(site_nam,fo)
+    
+    #Loading bar
+    widgets = ['fetching Al Jazeera - US & Canada: ', progressbar.AnimatedMarker()]
+    bar = progressbar.ProgressBar(widgets=widgets).start()
+    i =0
+    for i in range(50):
+        time.sleep(0.1)
+        bar.update(i)
+    
+    # For loop through each container for title, time and who reported
+    for tag in data.find_all(class_=container_CSI): #findall() makes a list, just use main container name
+
+        # get title of article
+        title = tag.find(class_=title_CSI).text.strip(
+        ) if tag.find(class_=title_CSI) else 'No Headline Found!'
+        
+        # Get the short news excerpt
+        more_info = tag.find(class_=excerpt_CSI).text.strip(
+        ) if tag.find(
+            class_=excerpt_CSI) else ''
+        
+        # Get Date article was written
+        try:
+            date = tag.find(class_=time_CSI).text.strip()
+        except AttributeError:
+            date = 'Al Jazeera - US & Canada'
+            
+        #write to file the date, title and excerpt
+        Quill.write(title,more_info,date,site_nam,fo)
+    print("\nAl Jazeera - US & Canada: fetched")  
+ 
+def alja_EU(fo):        #Pulls title, blurb and date Al Jazeera - EU
+    """ Pulls the  Al Jazeera - EU"""
+    
+    #Get url, parse into text
+    url = 'https://www.aljazeera.com/europe/'
+    response = requests.get(url)
+    site_nam = 'Al Jazeera - EU'
+    text = response.text
+    data = BeautifulSoup(text, 'html.parser')
+
+    #Class name stand-ins (CSI)
+    container_CSI = "gc__content"  #findall() makes a list, just use main container name
+    title_CSI = "gc__title"
+    excerpt_CSI = "gc__excerpt"
+    time_CSI = "screen-reader-text"
+    
+    #Write in title
+    Quill.title_write(site_nam,fo)
+    
+    #Loading bar
+    widgets = ['Fetching Al Jazeera - EU: ', progressbar.AnimatedMarker()]
+    bar = progressbar.ProgressBar(widgets=widgets).start()
+    i =0
+    for i in range(50):
+        time.sleep(0.1)
+        bar.update(i)
+    
+    # For loop through each container for title, time and who reported
+    for tag in data.find_all(class_=container_CSI): #findall() makes a list, just use main container name
+
+        # get title of article
+        title = tag.find(class_=title_CSI).text.strip(
+        ) if tag.find(class_=title_CSI) else 'No Headline Found!'
+        
+        # Get the short news excerpt
+        more_info = tag.find(class_=excerpt_CSI).text.strip(
+        ) if tag.find(
+            class_=excerpt_CSI) else ''
+        
+        # Get Date article was written
+        try:
+            date = tag.find(class_=time_CSI).text.strip()
+        except AttributeError:
+            date = 'Al Jazeera - EU'
+            
+        #write to file the date, title and excerpt
+        Quill.write(title,more_info,date,site_nam,fo)
+    print("\nAl Jazeera - EU: fetched")   
+
+def alja_MidEast(fo):        #Pulls title, blurb and date Al Jazeera - Middle East
+    """ Pulls the Al Jazeera - Middle East news """
+    
+    #Get url, parse into text
+    url = 'https://www.aljazeera.com/middle-east/'
+    response = requests.get(url)
+    text = response.text
+    data = BeautifulSoup(text, 'html.parser')
+    
+    #Class name stand-ins (CSI)
+    container_CSI = "gc__content"  #findall() makes a list, just use main container name
+    title_CSI = "gc__title"
+    excerpt_CSI = "gc__excerpt"
+    time_CSI = "screen-reader-text"
+    site_nam = 'Al Jazeera - Middle East'
+    
+    #Write in title
+    Quill.title_write(site_nam,fo)
+    
+    #Loading bar
+    widgets = ['Fetching Al Jazeera - Middle East: ', progressbar.AnimatedMarker()]
+    bar = progressbar.ProgressBar(widgets=widgets).start()
+    i =0
+    for i in range(50):
+        time.sleep(0.1)
+        bar.update(i)
+    
+    # For loop through each container for title, time and who reported
+    for tag in data.find_all(class_=container_CSI): #findall() makes a list, just use main container name
+
+        # get title of article
+        title = tag.find(class_=title_CSI).text.strip(
+        ) if tag.find(class_=title_CSI) else 'No Headline Found!'
+        
+        # Get the short news excerpt
+        more_info = tag.find(class_=excerpt_CSI).text.strip(
+        ) if tag.find(
+            class_=excerpt_CSI) else ''
+        
+        # Get Date article was written
+        try:
+            date = tag.find(class_=time_CSI).text.strip()
+        except AttributeError:
+            date = 'Al Jazeera - Middle East'
+            
+        #write to file the date, title and excerpt
+        Quill.write(title,more_info,date,site_nam,fo)
+    print("\nAl Jazeera - Middle East: fetched")   
+
+def alja_afr(fo):        #Pulls title, blurb and date Al Jazeera - Africa
+    """ Pulls the Al Jazeera - Africa news"""
+    
+    #Get url, parse into text
+    url = 'https://www.aljazeera.com/africa/'
+    response = requests.get(url)
+    site_nam = 'Al Jazeera - Africa'
+    text = response.text
+    data = BeautifulSoup(text, 'html.parser')
+    
+    #Class name stand-ins (CSI)
+    container_CSI = "gc__content"  #findall() makes a list, just use main container name
+    title_CSI = "gc__title"
+    excerpt_CSI = "gc__excerpt"
+    time_CSI = "screen-reader-text"
+    #Write in title
+    Quill.title_write(site_nam,fo)
+    
+    #Loading bar
+    widgets = ['Fetching Al Jazeera - Africa: ', progressbar.AnimatedMarker()]
+    bar = progressbar.ProgressBar(widgets=widgets).start()
+    i =0
+    for i in range(50):
+        time.sleep(0.1)
+        bar.update(i)
+    
+    # For loop through each container for title, time and who reported
+    for tag in data.find_all(class_=container_CSI): #findall() makes a list, just use main container name
+
+        # get title of article
+        title = tag.find(class_=title_CSI).text.strip(
+        ) if tag.find(class_=title_CSI) else 'No Headline Found!'
+        
+        # Get the short news excerpt
+        more_info = tag.find(class_=excerpt_CSI).text.strip(
+        ) if tag.find(
+            class_=excerpt_CSI) else ''
+        
+        # Get Date article was written
+        try:
+            date = tag.find(class_=time_CSI).text.strip()
+        except AttributeError:
+            date = 'Al Jazeera - Africa'
+            
+        #write to file the date, title and excerpt
+        Quill.write(title,more_info,date,site_nam,fo)
+    print("\nAl Jazeera - Africa: fetched")
+
+def alja_asia(fo):        #Pulls title, blurb and date Al Jazeera - Asia
+    """ Pulls the Al Jazeera - Asia news"""
+    
+    #Get url, parse into text
+    url = 'https://www.aljazeera.com/asia/'
+    response = requests.get(url)
+    text = response.text
+    data = BeautifulSoup(text, 'html.parser')
+    
+    #Class name stand-ins (CSI)
+    container_CSI = "gc__content"  #findall() makes a list, just use main container name
+    title_CSI = "gc__title"
+    excerpt_CSI = "gc__excerpt"
+    time_CSI = "screen-reader-text"
+    site_nam = 'Al Jazeera - Asia'
+    
+    #Write in title
+    Quill.title_write(site_nam,fo)
+    
+    #Loading bar
+    widgets = ['Fetching Al Jazeera - Asia: ', progressbar.AnimatedMarker()]
+    bar = progressbar.ProgressBar(widgets=widgets).start()
+    i =0
+    for i in range(50):
+        time.sleep(0.1)
+        bar.update(i)
+        
+    # For loop through each container for title, time and who reported
+    for tag in data.find_all(class_=container_CSI): #findall() makes a list, just use main container name
+
+        # get title of article
+        title = tag.find(class_=title_CSI).text.strip(
+        ) if tag.find(class_=title_CSI) else 'No Headline Found!'
+        
+        # Get the short news excerpt
+        more_info = tag.find(class_=excerpt_CSI).text.strip(
+        ) if tag.find(
+            class_=excerpt_CSI) else ''
+        
+        # Get Date article was written
+        try:
+            date = tag.find(class_=time_CSI).text.strip()
+        except AttributeError:
+            date = 'Al Jazeera - Asia'
+            
+        #write to file the date, title and excerpt
+        Quill.write(title,more_info,date,site_nam,fo)
+    print("\nAl Jazeera - Asia: fetched")
+
+def alja_AsPac(fo):        #Pulls title, blurb and date Al Jazeera - Asia-Pacific
+   """ Pulls the Al Jazeera - Asia-Pacific news"""
+   
+   #Get url, parse into text
+   url = 'https://www.aljazeera.com/asia-pacific/'
+   response = requests.get(url)
+   site_nam = 'Al Jazeera - Asia-Pacific'
+   text = response.text
+   data = BeautifulSoup(text, 'html.parser')
+   
+   #Class name stand-ins (CSI)
+   container_CSI = "gc__content"  #findall() makes a list, just use main container name
+   title_CSI = "gc__title"
+   excerpt_CSI = "gc__excerpt"
+   time_CSI = "screen-reader-text"
+   
+   #Write in title
+   Quill.title_write(site_nam,fo)
+   
+   #Loading bar
+   widgets = ['Fetching Al Jazeera - Asia-Pacific: ', progressbar.AnimatedMarker()]
+   bar = progressbar.ProgressBar(widgets=widgets).start()
+   i =0
+   for i in range(50):
+        time.sleep(0.1)
+        bar.update(i)
+        
+   # For loop through each container for title, time and who reported
+   for tag in data.find_all(class_=container_CSI): #findall() makes a list, just use main container name
+       # get title of article
+       title = tag.find(class_=title_CSI).text.strip(
+       ) if tag.find(class_=title_CSI) else 'No Headline Found!'
+       
+       # Get the short news excerpt
+       more_info = tag.find(class_=excerpt_CSI).text.strip(
+       ) if tag.find(
+           class_=excerpt_CSI) else ''
+       
+       # Get Date article was written
+       try:
+           date = tag.find(class_=time_CSI).text.strip()
+       except AttributeError:
+           date = 'Al Jazeera - Asia-Pacific'
+           
+       #write to file the date, title and excerpt
+       Quill.write(title,more_info,date,site_nam,fo)
+       
+   print("\nAl Jazeera - Asia-Pacific: fetched")   
+     
+def in_tod_IN(fo):        #Pulls title, blurb and date India Today - India
+    """ Pulls the India Today - India news """
+    
+    #Get url, parse into text
+    url = 'https://www.indiatoday.in/india'
+    response = requests.get(url)
+    time.sleep(.5)
+    site_nam = 'India Today - India'
+    text = response.text
+    data = BeautifulSoup(text, 'html.parser')
+    
+    #Loading bar
+    widgets = ['Fetching India Today - India: ', progressbar.AnimatedMarker()]
+    bar = progressbar.ProgressBar(widgets=widgets).start()
+    i =0
+    for i in range(50):
+        time.sleep(0.1)
+        bar.update(i)
+    #Write in title
+    Quill.title_write(site_nam,fo)
+    #Class name stand-ins (CSI)
+    container_CSI = "detail"  #findall() makes a list, just use main container name
+    
+    # For loop through each container for title, time and who reported
+    for tag in data.find_all(class_=container_CSI): #findall() makes a list, just use main container name
+
+        # get title of article
+
+        title = tag.find(class_="").text.strip(
+            ) if tag.find(class_="") else ""
+        more_info = tag.find(class_="").next_element.next_element.next_element.text.strip(
+            ) if tag.find(class_="").next_element.next_element.next_element else ""
+        date = f'pulled: {dt.date.today()}'
+        
+        #write to file the date, title and excerpt
+        Quill.write(title,more_info,date,site_nam,fo)
+    print("\nIndia Today - India: fetched")       
+    
+def in_tod_BUS(fo):        #Pulls title, blurb and date India Today - Business
+    """ Pulls the India Today - Business news """
+    
+    #Get url, parse into text
+    url = 'https://www.indiatoday.in/business'
+    response = requests.get(url)
+    time.sleep(.5)
+    site_nam = 'India Today - Business'
+    text = response.text
+    data = BeautifulSoup(text, 'html.parser')
+    
+    #Loading bar
+    widgets = ['Fetching India Today - Business: ', progressbar.AnimatedMarker()]
+    bar = progressbar.ProgressBar(widgets=widgets).start()
+    i =0
+    for i in range(50):
+        time.sleep(0.1)
+        bar.update(i)
+    #Write in title
+    Quill.title_write(site_nam,fo)
+    #Class name stand-ins (CSI)
+    container_CSI = "detail"  #findall() makes a list, just use main container name
+    
+    # For loop through each container for title, time and who reported
+    for tag in data.find_all(class_=container_CSI): #findall() makes a list, just use main container name
+
+        # get title of article
+
+        title = tag.find(class_="").text.strip(
+            ) if tag.find(class_="") else ""
+        more_info = tag.find(class_="").next_element.next_element.next_element.text.strip(
+            ) if tag.find(class_="").next_element.next_element.next_element else ""
+        date = f'pulled: {dt.date.today()}'
+        
+        #write to file the date, title and excerpt
+        Quill.write(title,more_info,date,site_nam,fo)
+       # bar.update(i)
+    print("\nIndia Today - Business: fetched")
+    
+def in_tod_WOR(fo):        #Pulls title, blurb and date India Today - World News
+    """ Pulls the India Today - World News """
+    
+    #Get url, parse into text
+    url = 'https://www.indiatoday.in/world'
+    response = requests.get(url)
+    text = response.text
+    data = BeautifulSoup(text, 'html.parser')
+    
+    #Class name stand-ins (CSI)
+    container_CSI = "detail"  #findall() makes a list, just use main container name
+    site_nam = 'India Today - World News'
+    
+    #Write in title
+    Quill.title_write(site_nam,fo)
+    
+    #Loading bar
+    widgets = ['Fetching India Today - World News: ',progressbar.AnimatedMarker()]
+    bar = progressbar.ProgressBar(widgets=widgets).start()
+    i = 0
+    for i in range(50):
+        time.sleep(0.1)
+        bar.update(i)
+    
+    # For loop through each container for title, time and who reported
+    for tag in data.find_all(class_=container_CSI): #findall() makes a list, just use main container name
+
+        # get title of article
+        title = tag.find(class_="").text.strip(
+            ) if tag.find(class_="") else ""
+        
+        more_info = tag.find(class_="").next_element.next_element.next_element.text.strip(
+            ) if tag.find(class_="").next_element.next_element.next_element else ""
+        
+        date = f'pulled: {dt.date.today()}'
+        
+        #write to file the date, title and excerpt
+        Quill.write(title,more_info,date,site_nam,fo)
+       # bar.update(i)
+    print("\nIndia Today - World News: fetched")
+    
+def nyt_US_RSS(fo):        #Pulls title, blurb and date NYT - US RSS feed
+
+    """ Pulls the NYT - US news, uses RSS feed due to the volatile nature of the headline elements within
+    the main website"""
+
+    #Get url, parse RSS feed
+    url = 'https://rss.nytimes.com/services/xml/rss/nyt/US.xml'
+    parsed_url = fp.parse(url)
+    site_nam = "NYT - US RSS feed"
+    
+    #Loading bar
+    widgets = ['Fetching NYT - US: ', progressbar.AnimatedMarker()]
+    bar = progressbar.ProgressBar(widgets=widgets).start()
+    i = 0
+    for i in range(50):
+        time.sleep(0.1)
+        bar.update(i)
+    
+    #Write in title
+    Quill.title_write(site_nam,fo)
+    
+    #Pull the headline and blurb from RSS site
+    
+    x=0
+    for entries in parsed_url:
+        title = parsed_url.entries[x].title
+        excerpt = parsed_url.entries[x].summary
+        date = parsed_url.entries[x].published
+        Quill.write(title,excerpt, date, site_nam,fo)
+        x+=1
+    print("\nNYT - US: fetched")   
+    
+def nyt_WOR(fo):        #Pulls title, blurb and date NYT - WORLD
+    """ Pulls the NYT - WORLD news """
+    
+    
+    #Get url, parse into text
+    url = 'https://www.nytimes.com/section/world'
+    response = requests.get(url)
+    text = response.text
+    data = BeautifulSoup(text, 'html.parser')
+    
+    #Class name stand-ins (CSI)
+    container_CSI = "css-1l4spti"  #findall() makes a list, just use main container name
+    title_CSI = "css-1j9dxys e15t083i0"
+    excerpt_CSI = "css-1echdzn e15t083i1"
+    time_CSI = "todays-date"
+    site_nam = 'NYT - WORLD'
+    
+    #Write in title
+    Quill.title_write(site_nam,fo)
+
+    #Loading bar
+    widgets = ['Fetching NYT - WORLD: ', progressbar.AnimatedMarker()]
+    bar = progressbar.ProgressBar(widgets=widgets).start()
+    i = 0
+    for i in range(50):
+        time.sleep(0.1)
+        bar.update(i)
+        
+    #for the smaller headline on the NYT sites
+    bold_container = "css-10wtrbd"
+    bold_title = "css-byk1jx e1hr934v1"
+    bold_more_info = "css-tskdi9 e1hr934v4"
+    
+    #For top 3 stories on site
+    for tag in data.find_all(class_=bold_container):
+        # get title of article
+        title = tag.find('h2', class_= bold_title).text.strip(
+            ) if tag.find('h2', class_= bold_title) else 'No Headline NYT - World'
+        more_info = tag.find('p', class_ =bold_more_info).text.strip(
+            ) if tag.find('p', class_ =bold_more_info) else 'No excerpt'
+        #This is here for the top 4 big headlines, this logic keeps out unwanted crap
+        if title == 'No Headline NYT - World' and more_info == 'No excerpt':
+            break
+        date = f'Pulled: {dt.date.today()}'
+        
+        #Write to file
+        Quill.write(title,more_info,date,site_nam,fo)
+        
+    # For loop through each container for title, time and who reported from list at bottom of site
+    for tag in data.find_all(class_=container_CSI): #findall() makes a list, just use main container name
+
+        # get title of article
+        title = tag.find(class_=title_CSI).text.strip(
+        ) if tag.find(class_=title_CSI) else 'No Headline Found!'
+        
+        # Get the short news excerpt
+        more_info = tag.find(class_=excerpt_CSI).text.strip(
+        ) if tag.find(
+            class_=excerpt_CSI) else ''
+        
+        # Get Date article was written
+        try:
+            date = tag.find(class_=time_CSI).datetime.text.strip()
+        except AttributeError:
+            date = f'from NYT - WORLD {dt.date.today()}'
+            
+        #write to file the date, title and excerpt
+        Quill.write(title,more_info,date,site_nam,fo)
+    print("\nNYT - WORLD: fetched")   
+    
+def nyt_TEC(fo):        #Pulls title, blurb and date NYT - TECH
+    """ Pulls the NYT - TECH news """
+    
+    #Get url, parse into text
+    url = 'https://www.nytimes.com/section/technology'
+    response = requests.get(url)
+    text = response.text
+    data = BeautifulSoup(text, 'html.parser')
+    
+    #Class name stand-ins (CSI)
+    container_CSI = "css-10wtrbd"  #findall() makes a list, just use main container name
+    title_CSI = "css-byk1jx e1hr934v1"
+    excerpt_CSI = "css-tskdi9 e1hr934v4"
+    time_CSI = "todays-date"
+    site_nam = 'NYT - TECH'
+    
+    #Write in title
+    Quill.title_write(site_nam,fo)
+
+    #Loading bar
+    widgets = [f'Fetching {site_nam}: ', progressbar.AnimatedMarker()]
+    bar = progressbar.ProgressBar(widgets=widgets).start()
+    i = 0
+    for i in range(50):
+        time.sleep(0.1)
+        bar.update(i)
+        
+    #for the smaller headline on the NYT sites
+    bold_container = "css-10wtrbd"
+    bold_title = "css-byk1jx e1hr934v1"
+    bold_more_info = "css-tskdi9 e1hr934v4"
+    
+    #For top 4 stories on site
+    for tag in data.find_all(class_=bold_container):
+        # get title of article
+        title = tag.find('h2', class_= bold_title).text.strip(
+            ) if tag.find('h2', class_= bold_title) else f'No Headline {site_nam}'
+        # Get the short news excerpt
+        more_info = tag.find('p', class_ =bold_more_info).text.strip(
+            ) if tag.find('p', class_ =bold_more_info) else 'No excerpt'
+        
+        #Kick out if there's no headline or excerpt
+        if more_info == 'No excerpt':
+            break
+        date = f'Pulled: {dt.date.today()}'
+        
+        #Write to file
+        Quill.write(title,more_info,date,site_nam,fo)
+        
+        
+    #Class name stand-ins (CSI) For other headlines
+    container_CSI = "css-1l4spti"  #findall() makes a list, just use main container name
+    title_CSI = "css-1j9dxys e15t083i0"
+    excerpt_CSI = "css-1echdzn e15t083i1"    
+        
+    # For loop through each container for title, time and who reported from list at bottom of site
+    for tag in data.find_all(class_=container_CSI): #findall() makes a list, just use main container name
+
+        # get title of article
+        title = tag.find(class_=title_CSI).text.strip(
+        ) if tag.find(class_=title_CSI) else f'No Headline {site_nam}'
+        # Get the short news excerpt
+        more_info = tag.find(class_=excerpt_CSI).text.strip(
+        ) if tag.find(
+            class_=excerpt_CSI) else 'No excerpt'
+        
+        #Kick out if there's no headline or excerpt
+        if title == f'No Headline {site_nam}' and more_info == 'No excerpt':
+            break
+        
+        # Get Date article was written
+        try:
+            date = tag.find(class_=time_CSI).datetime.text.strip()
+        except AttributeError:
+            date = f'from NYT - WORLD {dt.date.today()}'
+            
+        #write to file the date, title and excerpt
+        Quill.write(title,more_info,date,site_nam,fo)
+    print(f'\n{site_nam}: fetched')
+    
+def nyt_USPol(fo):        #Pulls title, blurb and date NYT - Politics
+    """ Pulls the NYT - Politics """
+        
+    #Get url, parse into text
+    url = 'https://www.nytimes.com/section/politics'
+    response = requests.get(url)
+    text = response.text
+    data = BeautifulSoup(text, 'html.parser')
+    
+    #Class name stand-ins (CSI)
+    container_CSI = "css-10wtrbd"  #findall() makes a list, just use main container name
+    title_CSI = "css-byk1jx e1hr934v1"
+    excerpt_CSI = "css-tskdi9 e1hr934v4"
+    time_CSI = "todays-date"
+    site_nam = 'NYT - POLITICS'
+    
+    #Write in title
+    Quill.title_write(site_nam,fo)
+
+    #Loading bar
+    widgets = [f'Fetching {site_nam}: ', progressbar.AnimatedMarker()]
+    bar = progressbar.ProgressBar(widgets=widgets).start()
+    i = 0
+    for i in range(50):
+        time.sleep(0.1)
+        bar.update(i)
+        
+    #for the smaller headline on the NYT sites
+    bold_container = "css-10wtrbd"
+    bold_title = "css-byk1jx e1hr934v1"
+    bold_more_info = "css-tskdi9 e1hr934v4"
+    
+    #For top 4 stories on site
+    for tag in data.find_all(class_=bold_container):
+        # get title of article
+        title = tag.find('h2', class_= bold_title).text.strip(
+            ) if tag.find('h2', class_= bold_title) else f'No Headline {site_nam}'
+        # Get the short news excerpt
+        more_info = tag.find('p', class_ =bold_more_info).text.strip(
+            ) if tag.find('p', class_ =bold_more_info) else 'No excerpt'
+        
+        #Kick out if there's no headline or excerpt
+        if more_info == 'No excerpt':
+            break
+        date = f'Pulled: {dt.date.today()}'
+        
+        #Write to file
+        Quill.write(title,more_info,date,site_nam,fo)
+        
+        
+    #Class name stand-ins (CSI) For other headlines
+    container_CSI = "css-1l4spti"  #findall() makes a list, just use main container name
+    title_CSI = "css-1j9dxys e15t083i0"
+    excerpt_CSI = "css-1echdzn e15t083i1"    
+        
+    # For loop through each container for title, time and who reported from list at bottom of site
+    for tag in data.find_all(class_=container_CSI): #findall() makes a list, just use main container name
+
+        # get title of article
+        title = tag.find(class_=title_CSI).text.strip(
+        ) if tag.find(class_=title_CSI) else f'No Headline {site_nam}'
+        # Get the short news excerpt
+        more_info = tag.find(class_=excerpt_CSI).text.strip(
+        ) if tag.find(
+            class_=excerpt_CSI) else 'No excerpt'
+        
+        #Kick out if there's no headline or excerpt
+        if title == f'No Headline {site_nam}' and more_info == 'No excerpt':
+            break
+        
+        # Get Date article was written
+        try:
+            date = tag.find(class_=time_CSI).datetime.text.strip()
+        except AttributeError:
+            date = f'from NYT - WORLD {dt.date.today()}'
+            
+        #write to file the date, title and excerpt
+        Quill.write(title,more_info,date,site_nam,fo)
+    print(f'\n{site_nam}: fetched')
+    
+def espn_top_rss(fo):        #Pulls title, blurb and date ESPN - TOP, RSS feed
+    """this pulls the ESPN - TOP news RSS feed """
+
+    # Get url, parse into text
+    url = 'https://www.espn.com/espn/rss/news'
+    site_nam = 'ESPN - TOP, RSS'
+    parsed_url = fp.parse(url)
+    # Write in title
+    Quill.title_write(site_nam,fo)
+    
+    # Loading bar
+    widgets = [f'Fetching {site_nam}: ', progressbar.AnimatedMarker()]
+    bar = progressbar.ProgressBar(widgets=widgets).start()
+    i = 0
+    for i in range(50):
+        time.sleep(0.1)
+        bar.update(i)
+        
+    # For loop through each container for title, time and who reported
+    x=0
+    for entries in parsed_url:
+        title = parsed_url.entries[x].title
+        excerpt = parsed_url.entries[x].summary
+        date = parsed_url.entries[x].published
+        Quill.write(title,excerpt, date, site_nam,fo)
+        x+=1
+    print(f'\n{site_nam}: fetched') 
+    
+def espn_NFL_rss(fo):        #Pulls title, blurb and date ESPN - NFL, RSS feed
+    """this pulls the ESPN - NFL, RSS feed """
+
+    # Get url, parse into text
+    url = 'https://www.espn.com/espn/rss/nfl/news'
+    site_nam = 'ESPN - NFL, RSS'
+    parsed_url = fp.parse(url)
+    # Write in title
+    Quill.title_write(site_nam,fo)
+    
+    # Loading bar
+    widgets = [f'Fetching {site_nam}: ', progressbar.AnimatedMarker()]
+    bar = progressbar.ProgressBar(widgets=widgets).start()
+    i = 0
+    for i in range(50):
+        time.sleep(0.1)
+        bar.update(i)
+        
+    # For loop through each container for title, time and who reported
+    x=0
+    for entries in parsed_url:
+        title = parsed_url.entries[x].title
+        excerpt = parsed_url.entries[x].summary
+        date = parsed_url.entries[x].published
+        Quill.write(title,excerpt, date, site_nam,fo)
+        x+=1
+    print(f'\n{site_nam}: fetched') 
+
+def espn_NBA_rss(fo):        #Pulls title, blurb and date ESPN - NBA, RSS feed
+    """this pulls the ESPN - NBA, RSS feed """
+
+    # Get url, parse into text
+    url = 'https://www.espn.com/espn/rss/nba/news'
+    site_nam = 'ESPN - NBA, RSS'
+    parsed_url = fp.parse(url)
+    # Write in title
+    Quill.title_write(site_nam,fo)
+    # Loading bar
+    widgets = [f'Fetching {site_nam}: ', progressbar.AnimatedMarker()]
+    bar = progressbar.ProgressBar(widgets=widgets).start()
+    i = 0
+    for i in range(50):
+        time.sleep(0.1)
+        bar.update(i)
+        
+    # For loop through each container for title, time and who reported
+    x=0
+    for entries in parsed_url:
+        title = parsed_url.entries[x].title
+        excerpt = parsed_url.entries[x].summary
+        date = parsed_url.entries[x].published
+        Quill.write(title,excerpt, date, site_nam,fo)
+        x+=1
+    print(f'\n{site_nam}: fetched') 
+    
+def espn_MLB_rss(fo):        #Pulls title, blurb and date ESPN - MLB, RSS feed
+    """this pulls the ESPN - MLB, RSS feed """
+
+    # Get url, parse into text
+    url = 'https://www.espn.com/espn/rss/mlb/news'
+    site_nam = 'ESPN - MLB, RSS'
+    parsed_url = fp.parse(url)
+    # Write in title
+    Quill.title_write(site_nam,fo)
+    # Loading bar
+    widgets = [f'Fetching {site_nam}: ', progressbar.AnimatedMarker()]
+    bar = progressbar.ProgressBar(widgets=widgets).start()
+    i = 0
+    for i in range(50):
+        time.sleep(0.1)
+        bar.update(i)
+        
+    # For loop through each container for title, time and who reported
+    x=0
+    for entries in parsed_url:
+        title = parsed_url.entries[x].title
+        excerpt = parsed_url.entries[x].summary
+        date = parsed_url.entries[x].published
+        Quill.write(title,excerpt, date, site_nam,fo)
+        x+=1
+    print(f'\n{site_nam}: fetched')
+    
+def espn_NHL_rss(fo):        #Pulls title, blurb and date ESPN - NHL, RSS feed
+    """this pulls the ESPN - NHL, RSS feed """
+
+    # Get url, parse into text
+    url = 'https://www.espn.com/espn/rss/mlb/news'
+    site_nam = 'ESPN - NHL, RSS'
+    parsed_url = fp.parse(url)
+    # Write in title
+    Quill.title_write(site_nam,fo)
+    # Loading bar
+    widgets = [f'Fetching {site_nam}: ', progressbar.AnimatedMarker()]
+    bar = progressbar.ProgressBar(widgets=widgets).start()
+    i = 0
+    for i in range(50):
+        time.sleep(0.1)
+        bar.update(i)
+        
+    # For loop through each container for title, time and who reported
+    x=0
+    for entries in parsed_url:
+        title = parsed_url.entries[x].title
+        excerpt = parsed_url.entries[x].summary
+        date = parsed_url.entries[x].published
+        Quill.write(title,excerpt, date, site_nam,fo)
+        x+=1
+    print(f'\n{site_nam}: fetched')
+    
+def espn_u_rss(fo):        #Pulls title, blurb and date ESPNU, RSS feed
+    """this pulls the ESPNU, RSS feed """
+
+    # Get url, parse into text
+    url = 'https://www.espn.com/espn/rss/espnu/news'
+    site_nam = 'ESPNU, RSS'
+    parsed_url = fp.parse(url)
+    # Write in title
+    Quill.title_write(site_nam,fo)
+    # Loading bar
+    widgets = [f'Fetching {site_nam}: ', progressbar.AnimatedMarker()]
+    bar = progressbar.ProgressBar(widgets=widgets).start()
+    i = 0
+    for i in range(50):
+        time.sleep(0.1)
+        bar.update(i)
+        
+    # For loop through each container for title, time and who reported
+    x=0
+    for entries in parsed_url:
+        title = parsed_url.entries[x].title
+        excerpt = parsed_url.entries[x].summary
+        date = parsed_url.entries[x].published
+        Quill.write(title,excerpt, date, site_nam,fo)
+        x+=1
+    print(f'\n{site_nam}: fetched')
+    
+def espn_ncb_rss(fo):        #Pulls title, blurb and date ESPN - National College Basketball, RSS feed
+    """this pulls the ESPN - National College Basketball, RSS feed """
+
+    # Get url, parse into text
+    url = 'https://www.espn.com/espn/rss/ncb/news'
+    site_nam = 'ESPN - College Basketball, RSS'
+    parsed_url = fp.parse(url)
+    # Write in title
+    Quill.title_write(site_nam,fo)
+    # Loading bar
+    widgets = [f'Fetching {site_nam}: ', progressbar.AnimatedMarker()]
+    bar = progressbar.ProgressBar(widgets=widgets).start()
+    i = 0
+    for i in range(50):
+        time.sleep(0.1)
+        bar.update(i)
+        
+    # For loop through each container for title, time and who reported
+    x=0
+    for entries in parsed_url:
+        title = parsed_url.entries[x].title
+        excerpt = parsed_url.entries[x].summary
+        date = parsed_url.entries[x].published
+        Quill.write(title,excerpt, date, site_nam,fo)
+        x+=1
+    print(f'\n{site_nam}: fetched')
+    
+def espn_ncf_rss(fo):        #Pulls title, blurb and date ESPN - National College Football, RSS feed
+    """this pulls the ESPN - National College Football, RSS feed """
+
+    # Get url, parse into text
+    url = 'https://www.espn.com/espn/rss/ncf/news'
+    site_nam = 'ESPN - College Football, RSS'
+    parsed_url = fp.parse(url)
+    # Write in title
+    Quill.title_write(site_nam,fo)
+    # Loading bar
+    widgets = [f'Fetching {site_nam}: ', progressbar.AnimatedMarker()]
+    bar = progressbar.ProgressBar(widgets=widgets).start()
+    i = 0
+    for i in range(50):
+        time.sleep(0.1)
+        bar.update(i)
+        
+    # For loop through each container for title, time and who reported
+    x=0
+    for entries in parsed_url:
+        title = parsed_url.entries[x].title
+        excerpt = parsed_url.entries[x].summary
+        date = parsed_url.entries[x].published
+        Quill.write(title,excerpt, date, site_nam,fo)
+        x+=1
+    print(f'\n{site_nam}: fetched')
+    
+    
+    
+def active_FXN(fo): #This is just to make main() more readable
+    bbc_UK(fo)
+    bbc_WOR(fo)
+    epoch_latest(fo)
+    epoch_US(fo)
+    epoch_USPol(fo)
+    epoch_World(fo)
+    alja_us_can(fo)
+    alja_EU(fo)
+    alja_MidEast(fo)
+    alja_afr(fo)
+    alja_asia(fo)
+    alja_AsPac(fo)
+    in_tod_IN(fo)
+    in_tod_BUS(fo)
+    in_tod_WOR(fo)
+    nyt_WOR(fo)
+    nyt_TEC(fo)
+    nyt_USPol(fo)
+    nyt_US_RSS(fo)
+    espn_top_rss(fo)
+    espn_NFL_rss(fo)
+    espn_NBA_rss(fo)
+    espn_MLB_rss(fo)    
+    espn_NHL_rss(fo)
+    espn_u_rss(fo)
+    espn_ncb_rss(fo)
+    espn_ncf_rss(fo)
+    
+
+    
+
+# -----main-----
+def main():
+    #getting path to make news folder
+    cwd_parent = Path.cwd().parent
+    fo_file = f'{str(cwd_parent)}/news/{str(dt.date.today())}.txt'
+    fo_news = str(cwd_parent)+"/news"
+    #Try catch to stop the error if the directory isn't found
+    try:
+        fo = open(fo_file, "w")
+        print(f'News at: {fo_news}')
+    except:
+        os.mkdir(fo_news)
+        fo = open(fo_file, "w")
+        print(f'News at: {fo_news}')
+        #Pass in "fo" to FXN or Quill.<function>() won't work
+    active_FXN(fo)
+    
+    #os.system('cls' if os.name == 'nt' else 'clear')
+    print()
+    print(f'News fetched and located at: {fo_news}')
+
+    
+# ___RUNNING PARTS___
+main()
